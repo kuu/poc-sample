@@ -2,46 +2,43 @@ import tv.nativ.mio.api.plugin.command.PluginCommand
 import groovy.json.JsonSlurper
 
 class IdleAME extends PluginCommand {
+  def debug = true
   def execute() {
 
-    def jsonSlurper = new JsonSlurper()
+    log("Querying AME1 server...")
 
-    context.logInfo("Querying AME1 server...")
-
-    def result1 = makeCall "http://{AME1 host}/api/queue"
-    def r1 = jsonSlurper.parseText(result1)
-
-    if (r1.num == 0) {
-      context.logInfo("AME1 is idle!")
-      context.moveDate = new Date()
+    if (queryEncoder("AME1 host name")) {
       return "AME1"
     }
 
-    context.logInfo("Querying AME2 server...")
+    log("Querying AME2 server...")
 
-    def result2 = makeCall "http://{AME2 host}/api/queue"
-    def r2 = jsonSlurper.parseText(result2)
-
-    if (r2.num == 0) {
-      context.logInfo("AME2 is idle!")
-      context.moveDate = new Date()
+    if (queryEncoder("AME2 host name")) {
       return "AME2"
     }
 
-    context.logInfo("Querying AME3 server...")
+    log("Querying AME3 server...")
 
-    def result3 = makeCall "http://{AME3 host}/api/queue"
-    def r3 = jsonSlurper.parseText(result3)
-
-    if (r3.num == 0) {
-      context.logInfo("AME3 is idle!")
-      context.moveDate = new Date()
+    if (queryEncoder("AME3 host name")) {
       return "AME3"
     }
 
-    context.logInfo("No idle encoder.")
+    log("Currently, no encoder is available.")
 
-    return "Busy"
+    return "busy"
+  }
+
+  def queryEncoder(hostName) {
+    def jsonSlurper = new JsonSlurper()
+    def result = makeCall "http://" + hostName + "/api/queue"
+    def r = jsonSlurper.parseText(result.body)
+    if (r.num == 0) {
+      log(hostName + "is idle!")
+      context.setStringVariable("targetEncoder", hostName)
+      context.setStringVariable("encodingStartedAt", (new Date()).toString())
+      return true
+    }
+    return false
   }
 
   def makeCall(url,method = "GET", body = "",headers = [:]){

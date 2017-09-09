@@ -2,39 +2,31 @@ import tv.nativ.mio.api.plugin.command.PluginCommand
 import groovy.json.JsonSlurper
 
 class AMEStatus extends PluginCommand {
+  def debug = true
   def execute() {
 
     def jsonSlurper = new JsonSlurper()
 
-    context.logInfo("Querying AME1 server...")
+    log("Querying " + ${targetEncoder})
 
-    def statusText = makeCall "http://{AME1 host}/api/encoder"
-    def status = jsonSlurper.parseText(statusText)
+    def result = makeCall "http://" + ${targetEncoder} + "/api/encoder"
+    def status = jsonSlurper.parseText(result.body)
 
     return checkStatus(status.last, status.prev)
   }
 
   def checkStatus(last, prev) {
-    if (last.state == "success") {
-      if (last.date >= context.moveDate) {
-        context.result = 'success'
-        context.logInfo("Encoding success!")
-        return true
+    if (status.state == "started") {
+      if (prev) {
+        return checkStatus(prev, null)
       }
-      return false;
+      return false
     }
 
-    if (last.state == "failed") {
-      if (last.date >= context.moveDate) {
-        context.result = 'failed'
-        context.logInfo("Encoding failed.")
-        return true
-      }
-      return false;
-    }
-
-    if (status.state == "started" && prev) {
-      return checkStatus(prev, null)
+    if (new Date(last.date) >= new Date(${encodingStartedAt})) {
+      context.setStringVariable("encodingResult", last.state)
+      log("Encoding result:" + last.state)
+      return true
     }
     return false
   }
