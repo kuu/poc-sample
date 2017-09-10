@@ -1,42 +1,21 @@
 import tv.nativ.mio.api.plugin.command.PluginCommand
 import groovy.json.JsonSlurper
 
-class IdleAME extends PluginCommand {
+class Move extends PluginCommand {
   def debug = true
   def execute() {
+    def targetEncoder = context.getStringVariable("targetEncoder")
+    def fileName = context.getStringVariable("externalFileName")
+    log("Querying " + targetEncoder)
 
-    log("Querying AME1 server...")
-
-    if (queryEncoder("AME1 host name")) {
-      return "AME1"
-    }
-
-    log("Querying AME2 server...")
-
-    if (queryEncoder("AME2 host name")) {
-      return "AME2"
-    }
-
-    log("Querying AME3 server...")
-
-    if (queryEncoder("AME3 host name")) {
-      return "AME3"
-    }
-
-    log("Currently, no encoder is available.")
-
-    return "busy"
-  }
-
-  def queryEncoder(hostName) {
-    def jsonSlurper = new JsonSlurper()
-    def result = makeCall "http://" + hostName + "/api/queue"
-    def r = jsonSlurper.parseText(result.body)
-    if (r.num == 0) {
-      log(hostName + "is idle!")
-      context.setStringVariable("targetEncoder", hostName)
+    def result = makeCall "http://" + targetEncoder + "/api/encode/" + fileName
+    if (result.code == 200) {
+      context.setStringVariable("encodingStartedAt", (new Date()).toString())
       return true
     }
+    context.setStringVariable("encodingResult", "failed")
+    context.setStringVariable("encodingStartedAt", "-")
+    context.setStringVariable("encodingCompletedAt", "-")
     return false
   }
 

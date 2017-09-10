@@ -4,30 +4,30 @@ import groovy.json.JsonSlurper
 class AMEStatus extends PluginCommand {
   def debug = true
   def execute() {
-
     def jsonSlurper = new JsonSlurper()
-
-    log("Querying " + ${targetEncoder})
-
-    def result = makeCall "http://" + ${targetEncoder} + "/api/encoder"
-    def status = jsonSlurper.parseText(result.body)
-
-    return checkStatus(status.last, status.prev)
+    def targetEncoder = context.getStringVariable("targetEncoder")
+    log("Querying " + targetEncoder)
+    def result = makeCall "http://" + targetEncoder + "/api/logs/10"
+    def logs = jsonSlurper.parseText(result.body)
+    return checkStatus(logs)
   }
 
-  def checkStatus(last, prev) {
-    if (status.state == "started") {
-      if (prev) {
-        return checkStatus(prev, null)
+  def checkStatus(logs) {
+    for (entry in logs) {
+      def state = entry.state
+      def date = entry.date
+      def encodingStartedAt = context.getStringVariable("encodingStartedAt")
+      if (new Date(date) < new Date(encodingStartedAt)) {
+        break
       }
-      return false
+      if (state == "success" || state == "failed") {
+        context.setStringVariable("encodingResult", entry.state)
+        context.setStringVariable("encodingCompletedAt", (new Date()).toString())
+        log("Encoding result:" + entry.state)
+        return true
+      }
     }
-
-    if (new Date(last.date) >= new Date(${encodingStartedAt})) {
-      context.setStringVariable("encodingResult", last.state)
-      log("Encoding result:" + last.state)
-      return true
-    }
+    log("Encoding not yet started...")
     return false
   }
 
